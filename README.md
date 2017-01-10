@@ -2,7 +2,8 @@
 
 WIP!!!!!!
 
-Export various things from your bank accounts at http://figo.me as prometheus metrics
+Export various things from your bank accounts at http://figo.me as prometheus metrics. Figo provides you
+with a REST API for various banks.
 
 Currently this just sums your account balances and transactions and exposes them.
 Maybe more coming soon.
