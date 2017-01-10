@@ -96,7 +96,7 @@ func do_login() error {
 	fmt.Println("")
 	fmt.Println("\t" + authURL)
 	fmt.Println("")
-	fmt.Println("Next run 'go run auth.go -client-id=$CLIENTID -client-SECRET=$SECRET -callback=REDIRECTURL'")
+	fmt.Println("Next run 'go run auth.go -client-id=$CLIENTID -client-secret=$SECRET -callback=REDIRECTURL'")
 
 	return nil
 }
@@ -131,6 +131,7 @@ func do_get_auth_token() error {
 	fmt.Printf("Response: %s\n", string(b))
 
 	type respS struct {
+		AccessToken string `json:"access_token"`
 		RefreshToken string `json:"refresh_token"`
 	}
 	var r respS
@@ -138,7 +139,8 @@ func do_get_auth_token() error {
 		return err
 	}
 
-	fmt.Printf("Dein RefreshToken: %s\n", r.RefreshToken)
+	fmt.Printf("Your AccessToken: %s\n", r.AccessToken)
+	fmt.Printf("Your RefreshToken: %s\n", r.RefreshToken)
 
 	return nil
 }
@@ -194,6 +196,7 @@ type FIGOAccount struct {
 	IBAN string `json:"iban"`
 	BIC string `json:"bic"`
 	Type string `json:"type"`
+	SyncEnabled bool `json:"sync_enabled"`
 
 	InTotalBalance bool `json:"in_total_balance"`
 	SavePin bool `json:"save_pin"`
@@ -230,12 +233,12 @@ func do_run_transactions() error {
 		Name: "figo_transaction_amount", 
 		Help: "Transaction amount",
 		},
-		[]string{"accountid", "type"},
+		[]string{"accountid", "type", "currency"},
 	)
 	prometheus.MustRegister(transaction_amount)
 
 	for _, t := range transactions {
-		transaction_amount.WithLabelValues(t.AccountID, t.Type).Add(t.Amount)
+		transaction_amount.WithLabelValues(t.AccountID, t.Type, t.Currency).Add(t.Amount)
 	}
 
 	accounts, err := get_accounts(*token)
@@ -246,11 +249,36 @@ func do_run_transactions() error {
 		Name: "figo_account_balance", 
 		Help: "Account Balance",
 		},
-		[]string{"accountid", "name", "type"},
+		[]string{"accountid", "name", "bankid", "type", "currency"},
 	)
-	prometheus.MustRegister(account_balance)
+	account_sync_enabled := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "figo_account_sync_enabled", 
+		Help: "Account Sync Enabled",
+		},
+		[]string{"accountid", "name", "bankid", "type"},
+	)
+	account_sync_status := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "figo_account_sync_status_error", 
+		Help: "Account Sync Status",
+		},
+		[]string{"accountid", "name"},
+	)
+	
+	prometheus.MustRegister(account_balance, account_sync_enabled, account_sync_status)
+	
 	for _, a := range accounts {
-		account_balance.WithLabelValues(a.AccountID, a.Name, a.Type).Add(a.Balance.Balance)
+		var v float64
+		if a.SyncEnabled {
+			v = 1
+		}
+		account_sync_enabled.WithLabelValues(a.AccountID, a.Name, a.BankID, a.Type).Set(v)
+		account_balance.WithLabelValues(a.AccountID, a.Name, a.BankID, a.Type, a.Currency).Add(a.Balance.Balance)
+
+		if a.Status.Code != 1 {
+			account_sync_status.WithLabelValues(a.AccountID, a.Name).Set(-1 * float64(a.Status.Code))
+		} else {
+			account_sync_status.WithLabelValues(a.AccountID, a.Name).Set(0)
+		}
 	}
 
 	fmt.Println("Listening at " + *addr)
