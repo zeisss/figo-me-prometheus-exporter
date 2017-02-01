@@ -2,7 +2,7 @@ package figo
 
 import (
 	"net/http"
-	"fmt"
+//	"fmt"
 	"net/url"
 	"strings"
 
@@ -64,7 +64,7 @@ func do_request(method, path, accesscode, contentType string, body io.Reader, au
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%#v\n", string(b))
+	// fmt.Printf("%#v\n", string(b))
 
 	if resp.StatusCode >= 400 {
 		var apiErr Error
