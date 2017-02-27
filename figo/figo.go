@@ -2,13 +2,17 @@ package figo
 
 import (
 	"net/http"
-//	"fmt"
+	"fmt"
 	"net/url"
 	"strings"
 
 	"io"
 	"io/ioutil"
 	"encoding/json"
+)
+
+var (
+	UnauthorizedErr = fmt.Errorf("Request was not authorized")
 )
 
 var Client = http.Client{
@@ -59,6 +63,10 @@ func do_request(method, path, accesscode, contentType string, body io.Reader, au
 		return err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return UnauthorizedErr
+	}
 
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
