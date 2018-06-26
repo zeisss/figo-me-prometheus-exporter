@@ -1,6 +1,6 @@
 # figo-me-prometheus-exporter
 
-WIP!!!!!!
+> NOTE figo.me is no longer available for private users. So this is useless now.
 
 Export various things from your bank accounts at http://figo.me as prometheus metrics. Figo provides you
 with a REST API for various banks.
